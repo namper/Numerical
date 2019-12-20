@@ -1,64 +1,72 @@
-import numpy as np 
+import numpy as np
 
-initial_x = 0
-final_x = 1
 
-initial_t = 0
-final_t = 1
+class ApproximatedSolution:
+    initial_x = 0
+    final_x = 1
 
-x_partition = 5 
-t_partition = 15
+    initial_t = 0
+    final_t = 1
 
-h = (final_x - initial_x)/x_partition
-tau = (final_t - initial_t)/t_partition
+    x_partition = 5
+    t_partition = 15
 
-gamma = tau/(h**2)
-def boundary_1(t):
-    return 2 + t
+    h = (final_x - initial_x) / x_partition
+    tau = (final_t - initial_t) / t_partition
 
-def boundary_2(t):
-    return 2 + t
+    gamma = tau / (h ** 2)
 
-def initial_cond(x):
-    return 2
+    def __init__(self):
+        self.grid = np.zeros(shape=(self.x_partition + 1, self.t_partition + 1))
+        self.approximate_solution()
 
-def source (x, t):
-    return x**2 + t
+    @staticmethod
+    def boundary_1(t):
+        return 2 + t
 
-def create_grid():
-    y = []
-    for i in range(x_partition + 1):
-        y.append(np.zeros(shape=t_partition + 1))
-    return y
+    @staticmethod
+    def boundary_2(t):
+        return 2 + t
 
-def approximate_solution():
-    solutions = create_grid()
-    for i in range( t_partition + 1 ):
-        solutions[0][i] = boundary_1(initial_t + tau*i)
-        solutions[x_partition][i] = boundary_2(initial_t + tau*i)
+    @staticmethod
+    def initial_cond(x):
+        return 2
 
-    for i in range( x_partition + 1):
-        solutions[i][0] = initial_cond(initial_x + h*i)
+    @staticmethod
+    def source(x, t):
+        return x ** 2 + t
 
-    def F(index_i, index_j):
-        return -solutions[index_i][index_j - 1] - tau*source(initial_x + h*index_i, initial_t + tau*index_j)
+    def f(self, index_i, index_j):
+        return -self.grid[index_i][index_j - 1] - self.tau * \
+               self.source(self.initial_x + self.h * index_i,
+                           self.initial_t + self.tau * index_j)
 
-    def alpha(index):
+    def alpha(self, index):
         if index == 1:
             return 0
-        return gamma/(1 + 2*gamma - gamma*alpha(index - 1)) 
-    
-    def beta(index, index_j):
+        return self.gamma / (1 + 2 * self.gamma - self.gamma * self.alpha(index - 1))
+
+    def beta(self, index, index_j):
         if index == 1:
-            return boundary_1(index_j - 1)
-        return (gamma*beta(index - 1, index_j) - F(index - 1, index_j))/(1 + 2*gamma - gamma*alpha(index - 1))
+            return self.boundary_1(index_j - 1)
+        return (self.gamma * self.beta(index - 1, index_j) - self.f(index - 1, index_j)) / (
+                1 + 2 * self.gamma - self.gamma * self.alpha(index - 1))
 
-    for index_j in range(1, t_partition + 1):
-        for index_i in range(x_partition - 1, 0, -1):
-            solutions[index_i][index_j] = alpha(index_i + 1)*solutions[index_i + 1][index_j] + beta(index_i+1,index_j)
+    def initialize_boundary_conditions(self):
+        self.grid.T[0] = np.array([self.initial_cond(self.initial_x + self.h * i) for i in range(self.x_partition + 1)])
+        print(self.x_partition)
+        self.grid[self.x_partition] = np.array(
+            [self.boundary_2(self.initial_t + self.tau * i) for i in range(self.t_partition + 1)]
+        )
+        self.grid[0] = np.array([self.boundary_1(self.initial_t + self.tau * i) for i in range(self.t_partition + 1)])
 
-    return solutions
+    def approximate_solution(self):
+        self.initialize_boundary_conditions()
+        for j in range(1, self.t_partition + 1):
+            for i in range(self.x_partition - 1, 0, -1):
+                self.grid[i][j] = self.alpha(i + 1) * self.grid[i + 1][j] + self.beta(i + 1, j)
+
+
 if __name__ == "__main__":
-    matrix = approximate_solution()
-    for i in range(x_partition+1):
-        print(matrix[i])
+    approximated_matrix = ApproximatedSolution().grid
+    print(approximated_matrix)
